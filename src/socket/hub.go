@@ -57,16 +57,18 @@ func (this *Hub) Unsubscribe(userId uuid.UUID, client *Client) {
 	}
 
 	log.Printf("Unsubscribe client for user(id:%v)\n", userId)
-	err := this.rmq.Channel.QueueUnbind(this.rmq.Queue.Name, client.userId.String(), "notifications", nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	clients[index] = clients[len(clients)-1]
 	this.clients[userId] = clients[:len(clients)-1]
 
 	if len(this.clients[userId]) == 0 {
 		delete(this.clients, userId)
+
+		log.Printf("Removing binding=%v between exchange \"notifications\", no more clients for it\n", client.userId.String())
+		err := this.rmq.Channel.QueueUnbind(this.rmq.Queue.Name, client.userId.String(), "notifications", nil)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 	close(client.Send())
 
