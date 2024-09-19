@@ -3,12 +3,14 @@ package socket
 import (
 	"log"
 	"notification/src/rabbitmq"
+	"sync"
 
 	"github.com/google/uuid"
 )
 
 type Hub struct {
 	clients map[uuid.UUID][]*Client
+  mu sync.RWMutex
 	rmq     *rabbitmq.Handlers
 }
 
@@ -20,10 +22,16 @@ func NewHub(rmq *rabbitmq.Handlers) *Hub {
 }
 
 func (this *Hub) UserClients(userId uuid.UUID) []*Client {
+  this.mu.RLock()
+  defer this.mu.RUnlock()
+  
 	return this.clients[userId]
 }
 
 func (this *Hub) Subscribe(client *Client) {
+  this.mu.Lock()
+  defer this.mu.Unlock()
+  
 	err := this.rmq.Channel.QueueBind(this.rmq.Queue.Name, client.userId.String(), "notifications", false, nil)
 	if err != nil {
 		log.Fatalln(err)
@@ -40,6 +48,9 @@ func (this *Hub) Subscribe(client *Client) {
 }
 
 func (this *Hub) Unsubscribe(userId uuid.UUID, client *Client) {
+  this.mu.Lock()
+  defer this.mu.Unlock()
+  
 	clients := this.clients[userId]
 	if clients == nil {
 		return

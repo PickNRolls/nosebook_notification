@@ -37,12 +37,12 @@ type Client struct {
 
 func NewClient(hub *Hub, rmq *rabbitmq.Handlers) *Client {
 	return &Client{
-		send: make(chan []byte, 256),
+		send: make(chan []byte),
 		hub:  hub,
 	}
 }
 
-func (this *Client) Send() chan []byte {
+func (this *Client) Send() chan<- []byte {
 	return this.send
 }
 
@@ -93,12 +93,6 @@ func (this *Client) write() {
 				return
 			}
 			w.Write(message)
-
-			n := len(this.send)
-			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-this.send)
-			}
 
 			if err := w.Close(); err != nil {
 				return
